@@ -1,0 +1,19 @@
+version: 0.2
+phases:
+    pre_build:
+        commands:
+            - echo Logging in to Amazon ECR...
+            - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+    build:
+        commands:
+            - echo Building Docker image...
+            - docker build -t my-microservice .
+            - docker tag my-microservice:latest $ECR_REGISTRY/my-microservice:$CODEBUILD_RESOLVED_SOURCE_VERSION
+    post_build:
+        commands:
+            - echo Pushing Docker image...
+            - docker push $ECR_REGISTRY/my-microservice:$CODEBUILD_RESOLVED_SOURCE_VERSION
+            - echo Writing image definitions file...
+            - printf '{"ImageURI":"%s"}' $ECR_REGISTRY/my-microservice:$CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json
+artifacts:
+    files: imagedefinitions.json

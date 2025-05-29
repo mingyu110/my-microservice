@@ -1,0 +1,24 @@
+{
+  "name": "my-microservice",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mingyu110/my-microservice.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mingyu110/my-microservice/issues"
+  },
+  "homepage": "https://github.com/mingyu110/my-microservice#readme",
+  "description": "Simple microservice for CI/CD demo",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
