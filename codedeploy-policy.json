@@ -1,0 +1,41 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "s3:GetBucketLocation",
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        "Resource": [
+          "arn:aws:s3:::my-microservice-pipeline-artifacts-933505494323-us-west-2",
+          "arn:aws:s3:::my-microservice-pipeline-artifacts-933505494323-us-west-2/*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ecs:DescribeServices",
+          "ecs:UpdateService",
+          "ecs:RegisterTaskDefinition",
+          "ecs:DescribeTaskDefinition",
+          "ecs:ListTaskDefinitions",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeListeners",
+          "elasticloadbalancing:DescribeRules",
+          "elasticloadbalancing:ModifyTargetGroup",
+          "elasticloadbalancing:ModifyListener",
+          "elasticloadbalancing:CreateTargetGroup",
+          "elasticloadbalancing:DeleteTargetGroup",
+          "elasticloadbalancing:RegisterTargets",
+          "elasticloadbalancing:DeregisterTargets",
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DescribeAlarms",
+          "iam:PassRole"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
