@@ -1,0 +1,41 @@
+{
+  "applicationName": "my-ecs-app",
+  "deploymentGroupName": "my-deployment-group",
+  "serviceRoleArn": "arn:aws:iam::933505494323:role/CodeDeployServiceRole",
+  "deploymentConfigName": "CodeDeployDefault.ECSCanary10Percent5Minutes",
+  "ecsServices": [
+    {
+      "serviceName": "my-service",
+      "clusterName": "my-cluster"
+    }
+  ],
+  "loadBalancerInfo": {
+    "targetGroupPairInfoList": [
+      {
+        "targetGroups": [
+          { "name": "my-target-group" },
+          { "name": "my-target-group-green" }
+        ],
+        "prodTrafficRoute": {
+          "listenerArns": [
+            "arn:aws:elasticloadbalancing:us-west-2:933505494323:listener/app/my-alb/9e1a63adcbcca2c1/bfe9ec199a481387"
+          ]
+        }
+      }
+    ]
+  },
+  "blueGreenDeploymentConfiguration": {
+    "terminateBlueInstancesOnDeploymentSuccess": {
+      "action": "TERMINATE",
+      "terminationWaitTimeInMinutes": 5
+    },
+    "deploymentReadyOption": {
+      "actionOnTimeout": "CONTINUE_DEPLOYMENT",
+      "waitTimeInMinutes": 0
+    }
+  },
+  "deploymentStyle": {
+    "deploymentType": "BLUE_GREEN",
+    "deploymentOption": "WITH_TRAFFIC_CONTROL"
+  }
+} 

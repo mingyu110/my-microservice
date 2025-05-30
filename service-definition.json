@@ -1,0 +1,29 @@
+{
+  "cluster": "my-cluster",
+  "serviceName": "my-service",
+  "taskDefinition": "my-task-definition",
+  "desiredCount": 2,
+  "launchType": "FARGATE",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-0f84f9bc7d44d11aa",
+        "subnet-01f22283ee956d50a"
+      ],
+      "securityGroups": [
+        "sg-0fdaac2470ec8ff5a"
+      ],
+      "assignPublicIp": "ENABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:us-west-2:933505494323:targetgroup/my-target-group/ff32ded274c548e8",
+      "containerName": "my-container",
+      "containerPort": 3000
+    }
+  ],
+  "deploymentController": {
+    "type": "CODE_DEPLOY"
+  }
+} 

@@ -1,0 +1,32 @@
+{
+  "name": "my-microservice-build",
+  "description": "Build project for my-microservice",
+  "source": {
+    "type": "CODEPIPELINE",
+    "buildspec": ".buildspec.yml"
+  },
+  "artifacts": {
+    "type": "CODEPIPELINE"
+  },
+  "environment": {
+    "type": "LINUX_CONTAINER",
+    "image": "aws/codebuild/amazonlinux2-x86_64-standard:3.0",
+    "computeType": "BUILD_GENERAL1_SMALL",
+    "environmentVariables": [
+      {
+        "name": "AWS_REGION",
+        "value": "us-west-2"
+      },
+      {
+        "name": "ECR_REGISTRY",
+        "value": "933505494323.dkr.ecr.us-west-2.amazonaws.com"
+      },
+      {
+        "name": "IMAGE_REPO_NAME",
+        "value": "my-microservice"
+      }
+    ],
+    "privilegedMode": true
+  },
+  "serviceRole": "arn:aws:iam::933505494323:role/CodeBuildServiceRole"
+} 
