@@ -6,6 +6,4 @@ Resources:
         TaskDefinition: <TASK_DEFINITION>
         LoadBalancerInfo:
           ContainerName: "my-container"
-          ContainerPort: 3000
-          TargetGroupInfo:
-            Name: "my-target-group" 
+          ContainerPort: 3000 
