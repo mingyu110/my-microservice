@@ -29,7 +29,8 @@
 - AWS CodeDeploy：执行渐进式部署到 ECS Fargate，使用 Canary 配置（如 10% 流量 5 分钟后全切换）。
 - Amazon ECS Fargate：运行 Node.js 微服务，无需管理服务器。
 - Application Load Balancer (ALB)：分发流量，支持渐进式发布。
-- Amazon ECR：存储 Docker 镜像。
+- Amazon ECR：存储 Docker 镜像，提供容器镜像仓库服务。
+- Amazon S3：存储 CodePipeline 构建工件（如 appspec.yml、taskdef.json 等配置文件）。
 - Amazon CloudWatch：监控部署健康状态。
 
 #### 2.2 架构图
@@ -488,11 +489,25 @@ aws iam create-role \
   --role-name CodePipelineServiceRole \
   --assume-role-policy-document file://codepipeline-trust-policy.json
 
-# 创建权限策略（专为ECR制品存储优化）
+# 创建权限策略（包含S3工件存储和ECR镜像访问权限）
 cat > codepipeline-service-policy.json << 'EOF'
 {
   "Version": "2012-10-17",
   "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::my-microservice-pipeline-artifacts-*",
+        "arn:aws:s3:::my-microservice-pipeline-artifacts-*/*"
+      ]
+    },
     {
       "Effect": "Allow",
       "Action": [
@@ -540,6 +555,13 @@ cat > codepipeline-service-policy.json << 'EOF'
         "ecs:RegisterTaskDefinition"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": "*"
     }
   ]
 }
@@ -581,7 +603,7 @@ aws iam attach-role-policy \
   --role-name CodeBuildServiceRole \
   --policy-arn arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
 
-# 创建自定义策略用于 ECR 访问（去除S3依赖）
+# 创建自定义策略用于 ECR 访问和S3工件访问
 cat > codebuild-service-policy.json << 'EOF'
 {
   "Version": "2012-10-17",
@@ -599,6 +621,18 @@ cat > codebuild-service-policy.json << 'EOF'
         "ecr:CompleteLayerUpload"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::my-microservice-pipeline-artifacts-*",
+        "arn:aws:s3:::my-microservice-pipeline-artifacts-*/*"
+      ]
     }
   ]
 }
@@ -688,12 +722,20 @@ aws codestar-connections create-connection \
 GITHUB_CONNECTION_ARN="arn:aws:codestar-connections:us-west-2:${ACCOUNT_ID}:connection/your-connection-id"
 GITHUB_REPO="your-username/my-microservice"
 
-# 创建 Pipeline 配置（使用ECR直接存储，无需S3）
+# 创建S3存储桶用于Pipeline工件存储
+BUCKET_NAME="my-microservice-pipeline-artifacts-${ACCOUNT_ID}-us-west-2"
+aws s3 mb s3://${BUCKET_NAME} --region us-west-2
+
+# 创建 Pipeline 配置（Docker镜像存储在ECR，构建工件存储在S3）
 cat > pipeline-config.json << EOF
 {
   "pipeline": {
     "name": "my-microservice-pipeline",
     "roleArn": "arn:aws:iam::${ACCOUNT_ID}:role/CodePipelineServiceRole",
+    "artifactStore": {
+      "type": "S3",
+      "location": "${BUCKET_NAME}"
+    },
     "stages": [
       {
         "name": "Source",
@@ -1128,6 +1170,7 @@ Resources:
 #### Q3: S3权限错误 `IAM_ROLE_PERMISSIONS: CodeDeployServiceRole does not give permission to perform operations in Amazon S3`？
 
 **问题**: CodeDeploy服务角色缺少S3访问权限
+**原因**: CodePipeline使用S3存储构建工件（如appspec.yml、taskdef.json），CodeDeploy需要从S3获取这些部署工件
 **解决方案**: 添加S3权限到CodeDeployServiceRole
 ```json
 {
@@ -1143,6 +1186,11 @@ Resources:
   ]
 }
 ```
+
+**重要说明**: 
+- **Docker镜像**: 存储在ECR中，提供高效的容器镜像管理
+- **构建工件**: 存储在S3中，包括appspec.yml、taskdef.json等部署配置文件
+- **工件传递**: CodePipeline的各阶段通过S3传递构建工件，这是AWS CodePipeline的标准工作方式
 
 #### Q4: ElasticLoadBalancing权限错误？
 
@@ -1190,26 +1238,9 @@ Resources:
 - 🔄 **Deploy**: ECS Blue/Green部署进行中
 - ❌ **Failed**: 检查具体错误消息
 
-### 权限文件组织
-
-#### Q8: 权限文件在哪里？
-
-所有AWS权限和信任策略文件已整理到 `aws-permissions/` 目录：
-
-```
-aws-permissions/
-├── codedeploy-policy.json          # CodeDeploy服务权限
-├── codedeploy-trust-policy.json    # CodeDeploy信任策略
-├── codebuild-service-policy.json   # CodeBuild服务权限
-├── codebuild-trust-policy.json     # CodeBuild信任策略
-├── codepipeline-service-policy.json # CodePipeline服务权限
-├── codepipeline-trust-policy.json  # CodePipeline信任策略
-└── ecs-task-execution-policy.json  # ECS任务执行权限
-```
-
 ### 故障排除
 
-#### Q9: 如何监控Pipeline执行？
+#### Q8: 如何监控Pipeline执行？
 
 ```bash
 # 检查Pipeline状态
@@ -1222,7 +1253,7 @@ aws deploy list-deployments --application-name my-ecs-app --deployment-group-nam
 aws deploy get-deployment --deployment-id <deployment-id> --region us-west-2
 ```
 
-#### Q10: 如何手动触发Pipeline？
+#### Q9: 如何手动触发Pipeline？
 
 ```bash
 aws codepipeline start-pipeline-execution --name my-microservice-pipeline --region us-west-2
@@ -1243,13 +1274,6 @@ aws codepipeline start-pipeline-execution --name my-microservice-pipeline --regi
 2. **目标组配置**: 生产和测试目标组必须存在
 3. **流量切换**: 合理配置流量切换时间和策略
 4. **回滚准备**: 确保能够快速回滚到上一版本
-
-### 成功指标
-
-- ✅ Source阶段成功率: 100%
-- ✅ Build阶段成功率: 100% 
-- 🎯 Deploy阶段成功率: 持续优化中
-- 🎯 端到端部署时间: 目标 < 10分钟
 
 ---
 
